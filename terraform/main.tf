@@ -117,7 +117,7 @@ resource "aws_instance" "web" {
   ami                    = var.ami_id
   instance_type          = var.instance_type
   subnet_id              = tolist(data.aws_subnets.default.ids)[0]
-  vpc_security_group_ids = [aws_security_group.web_sg.id]
+  vpc_security_group_ids = [aws_security_group.web_sg_2.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
 
   user_data_base64 = base64encode(templatefile("${path.module}/userdata.sh", {
