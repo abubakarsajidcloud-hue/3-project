@@ -119,7 +119,6 @@ resource "aws_instance" "web" {
   subnet_id              = tolist(data.aws_subnets.default.ids)[0]
   vpc_security_group_ids = [aws_security_group.web_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
-  
 
   user_data_base64 = base64encode(templatefile("${path.module}/userdata.sh", {
     project_name = var.project_name
@@ -275,4 +274,7 @@ import {
   id = "/aws/ec2/cloudops-lite"
 }
 
-
+import {
+  to = aws_security_group.web_sg
+  id = "sg-06ec9268cbe409721"
+}
