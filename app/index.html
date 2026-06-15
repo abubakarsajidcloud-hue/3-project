@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AutoDeploy — Terraform CI/CD Automation Platform</title>
+<meta name="description" content="AutoDeploy: Automated infrastructure deployment using Terraform, AWS, GitHub Actions, Prometheus & Grafana."/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050816; --bg-2:#0B1023; --bg-3:#0F172A;
+  --surf-1:rgba(255,255,255,0.04); --surf-2:rgba(255,255,255,0.06); --surf-3:rgba(255,255,255,0.08);
+  --violet:#7C3AED; --cyan:#06B6D4; --blue:#3B82F6; --pink:#EC4899; --orange:#F97316;
+  --green:#22c55e;
+  --text:#F8FAFC; --text-2:#CBD5E1; --muted:#94A3B8; --dim:#64748B;
+  --border:rgba(255,255,255,0.08);
+  --grad-primary:linear-gradient(135deg,#7C3AED 0%,#3B82F6 45%,#06B6D4 100%);
+  --grad-accent:linear-gradient(135deg,#EC4899 0%,#F97316 100%);
+  --glow-v:0 0 60px rgba(124,58,237,.35);
+  --glow-c:0 0 60px rgba(6,182,212,.30);
+  --ease:cubic-bezier(.22,1,.36,1);
+  --font-d:'Space Grotesk',system-ui,sans-serif;
+  --font-b:'Inter',system-ui,sans-serif;
+  --font-m:'JetBrains Mono',ui-monospace,monospace;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-b); color:var(--text);
+  background:var(--bg); line-height:1.6; overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+img,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+.container{width:100%;max-width:1240px;margin-inline:auto;padding-inline:24px}
+
+/* ===== Aurora background ===== */
+.aurora{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none}
+.aurora::before{
+  content:"";position:absolute;inset:-20%;
+  background:
+    radial-gradient(40% 50% at 20% 20%,rgba(124,58,237,.35),transparent 60%),
+    radial-gradient(35% 45% at 80% 10%,rgba(6,182,212,.28),transparent 60%),
+    radial-gradient(40% 50% at 70% 80%,rgba(236,72,153,.22),transparent 60%),
+    radial-gradient(50% 60% at 10% 90%,rgba(59,130,246,.22),transparent 60%);
+  filter:blur(40px); animation:drift 18s ease-in-out infinite alternate;
+}
+.grid-bg{
+  position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
+  background-size:56px 56px;
+  mask-image:radial-gradient(ellipse at 50% 30%,#000 30%,transparent 75%);
+}
+@keyframes drift{
+  0%{transform:translate3d(0,0,0) scale(1)}
+  100%{transform:translate3d(-3%,2%,0) scale(1.05)}
+}
+
+/* ===== Navbar ===== */
+.nav{
+  position:sticky;top:16px;z-index:50;
+  margin:16px auto 0; max-width:1180px;
+  padding:10px 16px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:rgba(11,16,35,.55); backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  border:1px solid var(--border); border-radius:16px;
+  box-shadow:0 8px 30px rgba(0,0,0,.35);
+}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-d);font-weight:700;letter-spacing:-.01em}
+.brand-mark{
+  width:32px;height:32px;border-radius:9px;
+  background:var(--grad-primary);
+  display:grid;place-items:center;color:#fff;font-family:var(--font-m);font-size:14px;
+  box-shadow:var(--glow-v);
+}
+.nav-links{display:flex;gap:8px}
+.nav-links a{
+  font-size:14px;color:var(--text-2);padding:8px 12px;border-radius:10px;
+  transition:.3s var(--ease);
+}
+.nav-links a:hover{color:var(--text);background:var(--surf-2)}
+.nav-cta{
+  font-family:var(--font-b);font-weight:600;font-size:13.5px;
+  padding:9px 16px;border-radius:10px;color:#fff;
+  background:var(--grad-primary); box-shadow:var(--glow-v);
+  transition:transform .3s var(--ease),box-shadow .3s var(--ease);
+}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 0 0 1px rgba(124,58,237,.6),0 18px 40px rgba(124,58,237,.45)}
+.menu-btn{display:none;background:transparent;border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
+
+/* ===== Hero ===== */
+.hero{padding:80px 0 60px;position:relative}
+.hero-grid{
+  display:grid; grid-template-columns:1.05fr .95fr; gap:56px; align-items:center;
+}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:10px;
+  padding:6px 12px;border:1px solid var(--border);border-radius:999px;
+  background:var(--surf-1);font-family:var(--font-m);font-size:12px;color:var(--text-2);
+}
+.eyebrow .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green)}
+h1.hero-title{
+  font-family:var(--font-d); font-weight:700;
+  font-size:clamp(40px,6.2vw,76px); line-height:1.02; letter-spacing:-.025em;
+  margin:20px 0 18px;
+}
+.grad-text{
+  background:linear-gradient(110deg,#fff 10%,#A5B4FC 35%,#22D3EE 60%,#F472B6 90%);
+  background-size:200% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  animation:grad-move 8s linear infinite;
+}
+@keyframes grad-move{0%{background-position:0 0}100%{background-position:200% 0}}
+.hero-sub{font-size:18px;color:var(--text-2);max-width:560px;margin-bottom:28px}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:13px 20px;border-radius:12px;font-weight:600;font-size:14.5px;
+  border:1px solid transparent;cursor:pointer;
+  transition:transform .3s var(--ease),box-shadow .3s var(--ease),background .3s var(--ease);
+}
+.btn-primary{background:var(--grad-primary);color:#fff;box-shadow:var(--glow-v)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 0 0 1px rgba(124,58,237,.6),0 24px 50px rgba(124,58,237,.5)}
+.btn-ghost{background:var(--surf-2);color:var(--text);border-color:var(--border)}
+.btn-ghost:hover{background:var(--surf-3);transform:translateY(-2px)}
+.hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:36px;max-width:520px}
+.stat{padding:16px;background:var(--surf-1);border:1px solid var(--border);border-radius:14px}
+.stat-num{font-family:var(--font-d);font-size:24px;font-weight:700;
+  background:var(--grad-primary);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat-lbl{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* terminal */
+.terminal-wrap{position:relative}
+.float-badges{position:absolute;inset:-20px;pointer-events:none}
+.badge{
+  position:absolute;display:flex;align-items:center;gap:8px;
+  padding:8px 12px;border-radius:12px;font-family:var(--font-m);font-size:12px;color:var(--text);
+  background:rgba(15,23,42,.75);border:1px solid var(--border);
+  backdrop-filter:blur(10px); box-shadow:0 8px 24px rgba(0,0,0,.4);
+  animation:float 6s ease-in-out infinite;
+}
+.badge i{width:8px;height:8px;border-radius:50%}
+.badge.b1{top:-10px;left:-20px;animation-delay:-1s}
+.badge.b2{top:30%;right:-40px;animation-delay:-2.5s}
+.badge.b3{bottom:14%;left:-50px;animation-delay:-4s}
+.badge.b4{bottom:-14px;right:10%;animation-delay:-3s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+.terminal{
+  background:linear-gradient(180deg,rgba(17,24,39,.85),rgba(11,16,35,.85));
+  border:1px solid var(--border); border-radius:18px; overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,.55),var(--glow-c);
+  backdrop-filter:blur(20px);
+}
+.term-head{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.02)}
+.term-dot{width:11px;height:11px;border-radius:50%}
+.d-r{background:#ff5f56}.d-y{background:#ffbd2e}.d-g{background:#27c93f}
+.term-title{margin-left:10px;font-family:var(--font-m);font-size:12px;color:var(--muted)}
+.term-body{padding:18px 18px 20px;font-family:var(--font-m);font-size:13px;line-height:1.7;color:#cbd5e1;min-height:330px}
+.term-body .p{color:#22d3ee}.term-body .ok{color:#22c55e}.term-body .w{color:#f59e0b}.term-body .c{color:#94a3b8}
+.cursor{display:inline-block;width:8px;height:14px;background:#22d3ee;vertical-align:-2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* ===== Section heading ===== */
+.section{padding:96px 0;position:relative}
+.section-head{max-width:760px;margin-bottom:48px}
+.kicker{font-family:var(--font-m);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan)}
+.section-title{
+  font-family:var(--font-d);font-weight:700;font-size:clamp(30px,4vw,46px);
+  letter-spacing:-.02em;line-height:1.1;margin:10px 0 14px;
+}
+.section-desc{color:var(--text-2);font-size:17px;max-width:640px}
+
+/* ===== About ===== */
+.about-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:32px;align-items:stretch}
+.glass{
+  background:var(--surf-1);border:1px solid var(--border);border-radius:20px;
+  padding:28px; backdrop-filter:blur(12px); position:relative; overflow:hidden;
+}
+.glass::before{
+  content:"";position:absolute;inset:0;border-radius:20px;padding:1px;
+  background:linear-gradient(135deg,rgba(124,58,237,.5),rgba(6,182,212,.4),transparent 60%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.6;
+}
+.about-list{display:grid;gap:14px;margin-top:14px}
+.about-list li{display:flex;gap:12px;color:var(--text-2);font-size:15.5px}
+.about-list .b{color:var(--text);font-weight:600}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.kpi{padding:18px;border-radius:14px;background:var(--surf-2);border:1px solid var(--border)}
+.kpi .v{font-family:var(--font-d);font-size:26px;font-weight:700;
+  background:var(--grad-accent);-webkit-background-clip:text;background-clip:text;color:transparent}
+.kpi .l{font-size:12.5px;color:var(--muted);margin-top:6px}
+
+/* ===== Tech stack bento ===== */
+.bento{display:grid;grid-template-columns:repeat(6,1fr);gap:18px}
+.tech{
+  position:relative;padding:22px;border-radius:18px;
+  background:var(--surf-1);border:1px solid var(--border);
+  transition:transform .4s var(--ease),background .3s var(--ease);
+  overflow:hidden;
+}
+.tech:hover{transform:translateY(-4px);background:var(--surf-2)}
+.tech::after{
+  content:"";position:absolute;inset:-1px;border-radius:18px;
+  background:linear-gradient(120deg,transparent 40%,rgba(124,58,237,.35),transparent 60%);
+  opacity:0;transition:.5s;pointer-events:none;
+}
+.tech:hover::after{opacity:1}
+.tech .icn{
+  width:46px;height:46px;border-radius:12px;display:grid;place-items:center;
+  background:var(--surf-3);font-family:var(--font-m);font-weight:700;font-size:14px;
+  margin-bottom:14px;
+}
+.tech h4{font-family:var(--font-d);font-size:17px;margin-bottom:4px}
+.tech p{font-size:13.5px;color:var(--muted)}
+.t-tf{grid-column:span 2}
+.t-aws{grid-column:span 2}
+.t-gha{grid-column:span 2}
+.t-do{grid-column:span 2}
+.t-pr{grid-column:span 2}
+.t-gr{grid-column:span 2}
+.t-sh{grid-column:span 3}
+.t-ln{grid-column:span 3}
+.icn-tf{color:#7C3AED;background:rgba(124,58,237,.15)}
+.icn-aws{color:#F97316;background:rgba(249,115,22,.15)}
+.icn-gha{color:#3B82F6;background:rgba(59,130,246,.15)}
+.icn-do{color:#06B6D4;background:rgba(6,182,212,.15)}
+.icn-pr{color:#EC4899;background:rgba(236,72,153,.15)}
+.icn-gr{color:#F59E0B;background:rgba(245,158,11,.15)}
+.icn-sh{color:#22C55E;background:rgba(34,197,94,.15)}
+.icn-ln{color:#A5B4FC;background:rgba(165,180,252,.15)}
+
+/* ===== Architecture flow ===== */
+.flow{
+  display:grid;grid-template-columns:repeat(6,1fr);gap:14px;align-items:stretch;
+  padding:30px;border-radius:22px;background:var(--surf-1);border:1px solid var(--border);
+}
+.node{
+  position:relative;padding:18px 14px;border-radius:14px;text-align:center;
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
+  border:1px solid var(--border);
+}
+.node .em{font-size:22px;margin-bottom:6px}
+.node .n{font-family:var(--font-d);font-size:15px;font-weight:600}
+.node .s{font-size:12px;color:var(--muted);font-family:var(--font-m);margin-top:4px}
+.node:not(:last-child)::after{
+  content:"→";position:absolute;right:-12px;top:50%;transform:translateY(-50%);
+  color:var(--cyan);font-weight:700;
+}
+@media (max-width:900px){.flow{grid-template-columns:repeat(2,1fr)}.node::after{display:none}}
+
+/* ===== Features ===== */
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.feat{
+  position:relative;padding:24px;border-radius:18px;
+  background:var(--surf-1);border:1px solid var(--border);overflow:hidden;
+  transition:transform .4s var(--ease);
+}
+.feat::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:var(--grad-primary);opacity:.7;
+}
+.feat:hover{transform:translateY(-4px)}
+.feat .fi{
+  width:44px;height:44px;border-radius:12px;display:grid;place-items:center;
+  background:rgba(124,58,237,.15);color:#A78BFA;margin-bottom:14px;font-family:var(--font-m);font-weight:700;
+}
+.feat h4{font-family:var(--font-d);font-size:18px;margin-bottom:6px}
+.feat p{color:var(--text-2);font-size:14.5px}
+
+/* ===== Folder tree ===== */
+.tree-wrap{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+.tree{
+  font-family:var(--font-m);font-size:13.5px;line-height:1.85;color:var(--text-2);
+  padding:24px;border-radius:18px;background:#070b1a;border:1px solid var(--border);
+  overflow:auto;
+}
+.tree .d{color:#22d3ee}.tree .f{color:#cbd5e1}.tree .c{color:#64748b}
+.tree-info p{color:var(--text-2);font-size:15px;margin-bottom:12px}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{font-family:var(--font-m);font-size:12px;padding:6px 10px;border-radius:999px;
+  background:var(--surf-2);border:1px solid var(--border);color:var(--text-2)}
+
+/* ===== Monitoring ===== */
+.mon-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px}
+.mon{
+  padding:24px;border-radius:18px;background:var(--surf-1);border:1px solid var(--border);
+  position:relative;overflow:hidden;
+}
+.mon h4{font-family:var(--font-d);font-size:18px;margin:10px 0 6px;display:flex;align-items:center;gap:10px}
+.mon p{color:var(--text-2);font-size:14.5px}
+.spark{margin-top:18px;height:60px;width:100%}
+.led{width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.4;transform:scale(.9)}50%{opacity:1;transform:scale(1.1)}}
+
+/* ===== CTA / Contact ===== */
+.cta{
+  position:relative;padding:64px 32px;border-radius:24px;text-align:center;overflow:hidden;
+  background:radial-gradient(circle at 30% 20%,rgba(124,58,237,.35),transparent 60%),
+             radial-gradient(circle at 80% 80%,rgba(6,182,212,.3),transparent 60%),
+             linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
+  border:1px solid var(--border);
+}
+.cta h3{font-family:var(--font-d);font-size:clamp(28px,4vw,42px);letter-spacing:-.02em;margin-bottom:14px}
+.cta p{color:var(--text-2);max-width:560px;margin:0 auto 26px}
+
+/* ===== Footer ===== */
+footer{padding:48px 0 36px;border-top:1px solid var(--border);margin-top:60px}
+.foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;color:var(--muted);font-size:13.5px}
+
+/* reveal */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+
+/* ===== Responsive ===== */
+@media (max-width:980px){
+  .hero-grid{grid-template-columns:1fr;gap:40px}
+  .about-grid{grid-template-columns:1fr}
+  .bento{grid-template-columns:repeat(2,1fr)}
+  .bento>*{grid-column:span 1!important}
+  .feat-grid{grid-template-columns:1fr 1fr}
+  .mon-grid{grid-template-columns:1fr}
+  .tree-wrap{grid-template-columns:1fr}
+  .nav-links{display:none}
+  .menu-btn{display:inline-flex}
+  .nav-links.open{
+    display:flex;flex-direction:column;position:absolute;top:64px;left:16px;right:16px;
+    background:rgba(11,16,35,.95);border:1px solid var(--border);border-radius:14px;padding:10px;
+  }
+}
+@media (max-width:600px){
+  .feat-grid{grid-template-columns:1fr}
+  .hero-stats{grid-template-columns:1fr 1fr}
+}
+</style>
+<style>
+/* ============================================================
+   PROFESSIONAL LIGHT OVERRIDE — simple, sleek, corporate
+   Palette: #2563EB / #F8FAFC / #1E293B / #64748B
+   ============================================================ */
+:root{
+  --bg:#F8FAFC; --bg-2:#FFFFFF; --bg-3:#F1F5F9;
+  --surf-1:#FFFFFF; --surf-2:#F8FAFC; --surf-3:#F1F5F9;
+  --violet:#2563EB; --cyan:#2563EB; --blue:#2563EB; --pink:#2563EB; --orange:#2563EB;
+  --green:#16A34A;
+  --text:#1E293B; --text-2:#334155; --muted:#64748B; --dim:#94A3B8;
+  --border:#E2E8F0;
+  --grad-primary:linear-gradient(135deg,#2563EB 0%,#1D4ED8 100%);
+  --grad-accent:linear-gradient(135deg,#2563EB 0%,#0F172A 100%);
+  --glow-v:0 6px 20px rgba(37,99,235,.18);
+  --glow-c:0 6px 20px rgba(15,23,42,.06);
+  --shadow-sm:0 1px 2px rgba(15,23,42,.04);
+  --shadow-md:0 4px 12px rgba(15,23,42,.06);
+  --shadow-lg:0 10px 30px rgba(15,23,42,.08);
+}
+body{background:var(--bg);color:var(--text)}
+
+/* Kill aurora + grid for a clean white canvas */
+.aurora,.grid-bg{display:none!important}
+
+/* Nav: solid white, subtle border */
+.nav{
+  background:rgba(255,255,255,.85);
+  border:1px solid var(--border);
+  box-shadow:var(--shadow-sm);
+  backdrop-filter:saturate(140%) blur(10px);
+}
+.nav-links a{color:var(--muted)}
+.nav-links a:hover{color:var(--text);background:var(--surf-3)}
+.brand-mark{background:var(--grad-primary);box-shadow:none;color:#fff}
+.nav-cta{background:#2563EB;box-shadow:var(--glow-v)}
+.nav-cta:hover{background:#1D4ED8;box-shadow:0 8px 24px rgba(37,99,235,.28)}
+
+/* Headline: dark slate, accent only on key phrase */
+h1.hero-title{color:var(--text)}
+.grad-text{
+  background:none;-webkit-background-clip:initial;background-clip:initial;
+  color:#2563EB;animation:none;
+}
+
+/* Eyebrow / kicker */
+.eyebrow{background:#fff;color:var(--muted);border-color:var(--border)}
+.eyebrow .dot{background:var(--green);box-shadow:none}
+.kicker{color:#2563EB;letter-spacing:.16em}
+.section-desc,.hero-sub{color:var(--muted)}
+
+/* Buttons */
+.btn-primary{background:#2563EB;color:#fff;box-shadow:var(--glow-v)}
+.btn-primary:hover{background:#1D4ED8;box-shadow:0 10px 24px rgba(37,99,235,.28);transform:translateY(-1px)}
+.btn-ghost{background:#fff;color:var(--text);border-color:var(--border);box-shadow:var(--shadow-sm)}
+.btn-ghost:hover{background:var(--surf-3);transform:translateY(-1px)}
+
+/* Stat cards */
+.stat{background:#fff;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.stat-num{background:none;-webkit-background-clip:initial;background-clip:initial;color:#2563EB}
+.stat-lbl{color:var(--muted)}
+
+/* Floating badges around terminal: clean white pills */
+.badge{
+  background:#fff;color:var(--text);border:1px solid var(--border);
+  box-shadow:var(--shadow-md);backdrop-filter:none;
+  animation:none;
+}
+/* Keep terminal dark (it's a code surface, looks professional dark) */
+.terminal{
+  background:#0F172A;border:1px solid #1E293B;
+  box-shadow:var(--shadow-lg);backdrop-filter:none;
+}
+.term-head{background:#0B1220;border-bottom:1px solid #1E293B}
+.term-title{color:#94A3B8}
+.term-body{color:#E2E8F0}
+.term-body .p{color:#60A5FA}.term-body .ok{color:#34D399}.term-body .c{color:#64748B}
+.cursor{background:#60A5FA}
+
+/* Glass cards → clean white cards */
+.glass{background:#fff;border:1px solid var(--border);box-shadow:var(--shadow-sm);backdrop-filter:none}
+.glass::before{display:none}
+.about-list li{color:var(--text-2)}
+.about-list .b{color:var(--text)}
+.kpi{background:var(--surf-2);border:1px solid var(--border)}
+.kpi .v{background:none;-webkit-background-clip:initial;background-clip:initial;color:#2563EB}
+.kpi .l{color:var(--muted)}
+
+/* Tech bento */
+.tech{background:#fff;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.tech:hover{background:#fff;transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.tech::after{display:none}
+.tech .icn{background:var(--surf-3);color:var(--text)}
+.tech p{color:var(--muted)}
+.icn-tf{color:#5B21B6;background:#EDE9FE}
+.icn-aws{color:#C2410C;background:#FFEDD5}
+.icn-gha{color:#1D4ED8;background:#DBEAFE}
+.icn-do{color:#0E7490;background:#CFFAFE}
+.icn-pr{color:#BE185D;background:#FCE7F3}
+.icn-gr{color:#B45309;background:#FEF3C7}
+.icn-sh{color:#15803D;background:#DCFCE7}
+.icn-ln{color:#3730A3;background:#E0E7FF}
+
+/* Architecture flow */
+.flow{background:#fff;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.node{background:var(--surf-2);border:1px solid var(--border)}
+.node .s{color:var(--muted)}
+.node:not(:last-child)::after{color:#2563EB}
+
+/* Features */
+.feat{background:#fff;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.feat:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.feat::before{background:#2563EB;opacity:1;height:3px}
+.feat .fi{background:#DBEAFE;color:#1D4ED8}
+.feat p{color:var(--muted)}
+
+/* Folder tree (keep dark — code surface) */
+.tree{background:#0F172A;border:1px solid #1E293B;color:#E2E8F0}
+.tree .d{color:#60A5FA}.tree .f{color:#CBD5E1}.tree .c{color:#64748B}
+.tree-info p{color:var(--muted)}
+.chip{background:var(--surf-2);border:1px solid var(--border);color:var(--text-2)}
+
+/* Monitoring */
+.mon{background:#fff;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.mon p{color:var(--muted)}
+.led{background:var(--green);box-shadow:0 0 8px rgba(22,163,74,.5)}
+
+/* CTA */
+.cta{
+  background:#0F172A;border:1px solid #0F172A;color:#fff;
+}
+.cta h3{color:#fff}
+.cta p{color:#CBD5E1}
+
+/* Footer */
+footer{border-top:1px solid var(--border)}
+.foot{color:var(--muted)}
+
+/* Mobile menu panel */
+@media (max-width:980px){
+  .nav-links.open{background:#fff;border:1px solid var(--border);box-shadow:var(--shadow-md)}
+}
+</style>
+</head>
+<body>
+<div class="aurora"></div>
+<div class="grid-bg"></div>
+
+<header class="container">
+  <nav class="nav" aria-label="Primary">
+    <a class="brand" href="#top"><span class="brand-mark">A</span>AutoDeploy</a>
+    <div class="nav-links" id="links">
+      <a href="#about">About</a>
+      <a href="#stack">Stack</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#features">Features</a>
+      <a href="#structure">Structure</a>
+      <a href="#monitoring">Monitoring</a>
+    </div>
+    <a href="#architecture" class="nav-cta">View Architecture →</a>
+    <button class="menu-btn" id="menuBtn" aria-label="Toggle menu">☰</button>
+  </nav>
+</header>
+
+<!-- HERO -->
+<section class="hero container" id="top">
+  <div class="hero-grid">
+    <div class="reveal">
+      <span class="eyebrow"><span class="dot"></span>v1.0 · Production-grade IaC platform</span>
+      <h1 class="hero-title">AutoDeploy — <span class="grad-text">Terraform CI/CD Automation Platform</span></h1>
+      <p class="hero-sub">Automated infrastructure deployment using Terraform, AWS, and GitHub Actions — with built-in monitoring, rollback, and health checks.</p>
+      <div class="cta-row">
+        <a href="#architecture" class="btn btn-primary">View Architecture →</a>
+        <a href="#features" class="btn btn-ghost">Explore Features</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat"><div class="stat-num">100%</div><div class="stat-lbl">IaC Coverage</div></div>
+        <div class="stat"><div class="stat-num">~2m</div><div class="stat-lbl">Avg Deploy</div></div>
+        <div class="stat"><div class="stat-num">24/7</div><div class="stat-lbl">Monitoring</div></div>
+      </div>
+    </div>
+
+    <div class="terminal-wrap reveal">
+      <div class="float-badges" aria-hidden="true">
+        <div class="badge b1"><i style="background:#7C3AED"></i>Terraform</div>
+        <div class="badge b2"><i style="background:#F97316"></i>AWS EC2</div>
+        <div class="badge b3"><i style="background:#3B82F6"></i>GitHub Actions</div>
+        <div class="badge b4"><i style="background:#EC4899"></i>Prometheus</div>
+      </div>
+      <div class="terminal" role="img" aria-label="Deployment terminal">
+        <div class="term-head">
+          <span class="term-dot d-r"></span><span class="term-dot d-y"></span><span class="term-dot d-g"></span>
+          <span class="term-title">~/autodeploy · deploy.sh</span>
+        </div>
+        <div class="term-body" id="term">
+<span class="c">$</span> <span class="p">git push origin main</span><br>
+<span class="c">› triggering workflow: deploy.yml</span><br>
+<span class="c">›</span> <span class="ok">✓</span> checkout · setup-terraform · validate<br>
+<span class="c">›</span> <span class="p">terraform plan</span> — 12 to add, 0 to change<br>
+<span class="c">›</span> <span class="p">terraform apply</span> -auto-approve<br>
+<span class="c">›</span> <span class="ok">✓</span> aws_vpc.main · aws_security_group.web<br>
+<span class="c">›</span> <span class="ok">✓</span> aws_instance.app[0..2] provisioned<br>
+<span class="c">›</span> <span class="p">./scripts/health-check.sh</span> — <span class="ok">HEALTHY</span><br>
+<span class="c">›</span> prometheus targets: <span class="ok">3/3 UP</span> · grafana: <span class="ok">live</span><br>
+<span class="c">$</span> <span class="cursor"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section class="section container" id="about">
+  <div class="section-head reveal">
+    <div class="kicker">// About the project</div>
+    <h2 class="section-title">Infrastructure as Code, delivered as a pipeline.</h2>
+    <p class="section-desc">AutoDeploy automates the full provisioning and deployment lifecycle — turning every commit into a reproducible, observable, production-ready release on AWS.</p>
+  </div>
+  <div class="about-grid">
+    <div class="glass reveal">
+      <h3 style="font-family:var(--font-d);font-size:22px;margin-bottom:10px">A complete DevOps loop</h3>
+      <p style="color:var(--text-2)">From source to running infrastructure — every step is codified, reviewed, and observable. AutoDeploy combines IaC, CI/CD, and monitoring into one cohesive workflow.</p>
+      <ul class="about-list">
+        <li>▸ <span><span class="b">Infrastructure as Code</span> — Terraform modules describe VPCs, EC2, and security groups declaratively.</span></li>
+        <li>▸ <span><span class="b">CI/CD pipeline</span> — GitHub Actions runs plan, apply, and post-deploy checks on every push.</span></li>
+        <li>▸ <span><span class="b">Monitoring</span> — Prometheus scrapes metrics, Grafana visualizes them, Node Exporter watches the hosts.</span></li>
+        <li>▸ <span><span class="b">Operational scripts</span> — Shell automation for deploy, rollback, backup, and health checks.</span></li>
+      </ul>
+    </div>
+    <div class="glass reveal">
+      <h3 style="font-family:var(--font-d);font-size:18px;margin-bottom:14px">Platform at a glance</h3>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="v">7+</div><div class="l">Terraform modules</div></div>
+        <div class="kpi"><div class="v">3</div><div class="l">Pipeline stages</div></div>
+        <div class="kpi"><div class="v">4</div><div class="l">Automation scripts</div></div>
+        <div class="kpi"><div class="v">2</div><div class="l">Observability tools</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section class="section container" id="stack">
+  <div class="section-head reveal">
+    <div class="kicker">// Tech stack</div>
+    <h2 class="section-title">Built on a modern cloud-native stack.</h2>
+    <p class="section-desc">A focused set of best-in-class tools, wired together for reliability, observability, and speed.</p>
+  </div>
+  <div class="bento">
+    <div class="tech t-tf reveal"><div class="icn icn-tf">TF</div><h4>Terraform</h4><p>Declarative IaC for VPCs, EC2, IAM and security groups.</p></div>
+    <div class="tech t-aws reveal"><div class="icn icn-aws">AWS</div><h4>Amazon Web Services</h4><p>Compute, networking, and storage primitives for the platform.</p></div>
+    <div class="tech t-gha reveal"><div class="icn icn-gha">GH</div><h4>GitHub Actions</h4><p>CI/CD pipeline running plan, apply, and post-deploy checks.</p></div>
+    <div class="tech t-do reveal"><div class="icn icn-do">DKR</div><h4>Docker</h4><p>Containerized workloads for portable, repeatable runtime.</p></div>
+    <div class="tech t-pr reveal"><div class="icn icn-pr">PR</div><h4>Prometheus</h4><p>Pull-based metrics collection with alerting rules.</p></div>
+    <div class="tech t-gr reveal"><div class="icn icn-gr">GR</div><h4>Grafana</h4><p>Dashboards for infrastructure, app, and SLO visibility.</p></div>
+    <div class="tech t-sh reveal"><div class="icn icn-sh">SH</div><h4>Linux Shell Scripts</h4><p>Deploy, rollback, backup, and health check automation.</p></div>
+    <div class="tech t-ln reveal"><div class="icn icn-ln">LX</div><h4>Linux / Node Exporter</h4><p>Host-level telemetry feeding Prometheus targets.</p></div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section class="section container" id="architecture">
+  <div class="section-head reveal">
+    <div class="kicker">// Architecture</div>
+    <h2 class="section-title">From commit to running infrastructure.</h2>
+    <p class="section-desc">A single push triggers a deterministic flow: validated code, planned infrastructure, applied state, and live monitoring.</p>
+  </div>
+  <div class="flow reveal">
+    <div class="node"><div class="em">👨‍💻</div><div class="n">Developer</div><div class="s">commit + push</div></div>
+    <div class="node"><div class="em">🐙</div><div class="n">GitHub</div><div class="s">source of truth</div></div>
+    <div class="node"><div class="em">⚙️</div><div class="n">GitHub Actions</div><div class="s">CI/CD pipeline</div></div>
+    <div class="node"><div class="em">🟣</div><div class="n">Terraform</div><div class="s">plan · apply</div></div>
+    <div class="node"><div class="em">☁️</div><div class="n">AWS</div><div class="s">EC2 · VPC · SG</div></div>
+    <div class="node"><div class="em">📊</div><div class="n">Monitoring</div><div class="s">Prom + Grafana</div></div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section container" id="features">
+  <div class="section-head reveal">
+    <div class="kicker">// Features</div>
+    <h2 class="section-title">Everything you need to ship infrastructure safely.</h2>
+  </div>
+  <div class="feat-grid">
+    <div class="feat reveal"><div class="fi">IaC</div><h4>Infrastructure as Code</h4><p>Reusable Terraform modules for EC2, security groups, and environments.</p></div>
+    <div class="feat reveal"><div class="fi">CI</div><h4>Automated CI/CD Pipeline</h4><p>GitHub Actions runs lint, validate, plan, and apply on every push.</p></div>
+    <div class="feat reveal"><div class="fi">EC2</div><h4>EC2 Provisioning</h4><p>Declarative compute provisioning with versioned instance configs.</p></div>
+    <div class="feat reveal"><div class="fi">SG</div><h4>Security Group Management</h4><p>Explicit, reviewed firewall rules — checked in and code-reviewed.</p></div>
+    <div class="feat reveal"><div class="fi">OBS</div><h4>Monitoring (Prom + Grafana)</h4><p>Metrics, dashboards, and alerts wired to every deployed environment.</p></div>
+    <div class="feat reveal"><div class="fi">SH</div><h4>Auto Deployment Scripts</h4><p>Idempotent shell scripts orchestrating the post-apply lifecycle.</p></div>
+    <div class="feat reveal"><div class="fi">RB</div><h4>Rollback Capability</h4><p>Safe revert path using Terraform state and versioned configs.</p></div>
+    <div class="feat reveal"><div class="fi">HC</div><h4>Health Checks</h4><p>Automated post-deploy probes confirm service readiness before traffic.</p></div>
+    <div class="feat reveal"><div class="fi">BK</div><h4>Backup Automation</h4><p>Scheduled backup scripts protect state and critical configuration.</p></div>
+  </div>
+</section>
+
+<!-- STRUCTURE -->
+<section class="section container" id="structure">
+  <div class="section-head reveal">
+    <div class="kicker">// Folder structure</div>
+    <h2 class="section-title">Clean, modular, and easy to navigate.</h2>
+    <p class="section-desc">Code is organized by concern — Terraform modules, environments, monitoring, and automation each live in their own space.</p>
+  </div>
+  <div class="tree-wrap">
+    <pre class="tree reveal">
+<span class="d">autodeploy/</span>
+├── <span class="d">terraform/</span>
+│   ├── <span class="d">modules/</span>
+│   │   ├── <span class="d">ec2/</span>           <span class="c"># EC2 instance module</span>
+│   │   └── <span class="d">security-groups/</span>
+│   └── <span class="d">environments/</span>
+│       └── <span class="d">dev/</span>           <span class="c"># dev environment</span>
+│           ├── <span class="f">main.tf</span>
+│           ├── <span class="f">variables.tf</span>
+│           └── <span class="f">outputs.tf</span>
+├── <span class="d">.github/</span>
+│   └── <span class="d">workflows/</span>
+│       └── <span class="f">deploy.yml</span>     <span class="c"># GitHub Actions CI/CD</span>
+├── <span class="d">monitoring/</span>
+│   ├── <span class="d">prometheus/</span>
+│   │   └── <span class="f">prometheus.yml</span>
+│   └── <span class="d">grafana/</span>
+│       └── <span class="d">dashboards/</span>
+├── <span class="d">scripts/</span>
+│   ├── <span class="f">deploy.sh</span>
+│   ├── <span class="f">rollback.sh</span>
+│   ├── <span class="f">backup.sh</span>
+│   └── <span class="f">health-check.sh</span>
+├── <span class="f">README.md</span>
+└── <span class="f">LICENSE</span>
+    </pre>
+    <div class="tree-info reveal">
+      <p><strong style="color:var(--text)">Modular by design.</strong> Each top-level directory has a single responsibility — infrastructure, pipelines, observability, or automation.</p>
+      <p>Environments are isolated under <code style="font-family:var(--font-m);color:var(--cyan)">terraform/environments/</code>, so dev, staging, and prod evolve independently without coupling.</p>
+      <div class="chip-row">
+        <span class="chip">terraform/modules</span>
+        <span class="chip">environments/dev</span>
+        <span class="chip">.github/workflows</span>
+        <span class="chip">monitoring/prometheus</span>
+        <span class="chip">monitoring/grafana</span>
+        <span class="chip">scripts/*.sh</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MONITORING -->
+<section class="section container" id="monitoring">
+  <div class="section-head reveal">
+    <div class="kicker">// Observability</div>
+    <h2 class="section-title">Live monitoring, end to end.</h2>
+    <p class="section-desc">Every deployed environment is observable from the moment Terraform finishes applying — metrics, dashboards, and host telemetry are wired in by default.</p>
+  </div>
+  <div class="mon-grid">
+    <div class="mon reveal">
+      <span class="led"></span>
+      <h4>Prometheus</h4>
+      <p>Pulls metrics from app and infrastructure targets on a fixed scrape interval, with alerting rules for SLO violations.</p>
+      <svg class="spark" viewBox="0 0 200 60" preserveAspectRatio="none"><polyline fill="none" stroke="#EC4899" stroke-width="2" points="0,40 20,30 40,38 60,22 80,28 100,18 120,26 140,14 160,22 180,12 200,18"/></svg>
+    </div>
+    <div class="mon reveal">
+      <span class="led" style="background:#06B6D4;box-shadow:0 0 12px #06B6D4"></span>
+      <h4>Grafana</h4>
+      <p>Pre-built dashboards visualize CPU, memory, request rate, and deployment health across environments.</p>
+      <svg class="spark" viewBox="0 0 200 60" preserveAspectRatio="none"><polyline fill="none" stroke="#06B6D4" stroke-width="2" points="0,30 20,34 40,24 60,30 80,20 100,28 120,16 140,24 160,12 180,20 200,10"/></svg>
+    </div>
+    <div class="mon reveal">
+      <span class="led" style="background:#7C3AED;box-shadow:0 0 12px #7C3AED"></span>
+      <h4>Node Exporter</h4>
+      <p>Host-level metrics — CPU, memory, disk, and network — exposed for Prometheus to scrape from every EC2 node.</p>
+      <svg class="spark" viewBox="0 0 200 60" preserveAspectRatio="none"><polyline fill="none" stroke="#7C3AED" stroke-width="2" points="0,36 20,28 40,32 60,24 80,30 100,22 120,28 140,18 160,26 180,16 200,22"/></svg>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="section container">
+  <div class="cta reveal">
+    <h3>Ship infrastructure like software.</h3>
+    <p>AutoDeploy combines Terraform, GitHub Actions, AWS, and Prometheus/Grafana into a single, opinionated workflow — built for DevOps learning and real-world cloud automation.</p>
+    <div class="cta-row" style="justify-content:center">
+      <a href="#architecture" class="btn btn-primary">View Architecture</a>
+      <a href="#stack" class="btn btn-ghost">Explore Stack</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container foot">
+    <div>© AutoDeploy · Built for DevOps learning and real-world cloud automation.</div>
+    <div style="font-family:var(--font-m)">Terraform · AWS · GitHub Actions · Prometheus · Grafana</div>
+  </div>
+</footer>
+
+<script>
+// menu toggle
+const mb=document.getElementById('menuBtn'),lk=document.getElementById('links');
+mb?.addEventListener('click',()=>lk.classList.toggle('open'));
+lk?.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>lk.classList.remove('open')));
+
+// reveal on scroll
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+// cursor spotlight on aurora
+document.addEventListener('mousemove',e=>{
+  const x=(e.clientX/innerWidth)*100, y=(e.clientY/innerHeight)*100;
+  document.documentElement.style.setProperty('--mx',x+'%');
+  document.documentElement.style.setProperty('--my',y+'%');
+});
+</script>
+</body>
+</html>
