@@ -12,6 +12,10 @@ data "aws_vpc" "default" {
 data "aws_subnet_ids" "default" {
   vpc_id = data.aws_vpc.default.id
 }
+
+locals {
+  subnet_id = length(data.aws_subnet_ids.default.ids) > 0 ? sort(data.aws_subnet_ids.default.ids)[0] : null
+}
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
@@ -107,9 +111,10 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 resource "aws_instance" "web" {
   ami                    = data.aws_ami.amazon_linux.id
   instance_type          = var.instance_type
- subnet_id = tolist(data.aws_subnet_ids.default.ids)[0]
+ subnet_id = local.subnet_id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
+  depends_on = [aws_iam_instance_profile.ec2_profile]
 
   root_block_device {
     volume_type           = "gp3"
